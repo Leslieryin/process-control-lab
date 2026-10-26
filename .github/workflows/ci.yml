@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # 测试从 index.html 里抽出仿真核来跑，测的就是页面实际使用的那份实现
+      - name: 仿真核数值断言
+        run: node tests/core.test.mjs
+
+      - name: 校验页面结构
+        run: |
+          n=$(grep -o 'data-t="[a-z]*"' index.html | sort -u | wc -l)
+          echo "检测到 $n 个实验标签"
+          test "$n" -eq 6 || { echo "预期 6 个实验"; exit 1; }
+          grep -q 'Smith' index.html || { echo "缺少 Smith 预估实验"; exit 1; }

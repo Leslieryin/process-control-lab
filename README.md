@@ -1,6 +1,8 @@
 # process-control-lab · 过程控制交互实验台
 
 [![在线演示](https://img.shields.io/badge/demo-%E5%9C%A8%E7%BA%BF%E6%89%93%E5%BC%80-0f6cbd?style=flat-square)](https://leslieryin.github.io/process-control-lab/)
+![CI](https://github.com/Leslieryin/process-control-lab/actions/workflows/ci.yml/badge.svg)
+![license](https://img.shields.io/badge/license-MIT-blue)
 
 **打开即用的单文件 HTML**——[在线直接用](https://leslieryin.github.io/process-control-lab/)，或下载 `index.html` 双击离线运行。零依赖、零框架，全部数值仿真在浏览器本地完成。
 
@@ -71,9 +73,13 @@ python -m http.server 8000
 
 ## 验证
 
-仿真核（一阶环节、延迟、PID、FOPDT、Smith 闭环）有 16 项数值断言，覆盖：稳态收敛、63.2% 时间常数、延迟步数、纯比例增益、积分消差、抗饱和退出、Smith 的 IAE 优势。
+```bash
+node tests/core.test.mjs      # 16 项数值断言（需要 Node 20+；跑页面本身不需要 Node）
+```
 
-各实验的默认参数也逐个跑过，确保打开页面看到的是有教学意义的曲线，而不是一条崩掉的线。
+测试从 `index.html` 里直接抽出「环节模型」与「仿真辅助」两节代码来执行——测的就是页面实际在用的那份实现，不是另写一份。覆盖：稳态收敛、63.2% 时间常数、延迟步数、纯比例增益、积分消差、抗饱和退出、Smith 的 IAE 优势。
+
+各实验的默认参数也逐个扫描过，确保打开页面看到的是有教学意义的曲线，而不是一条崩掉的线。比如实验四的 `Kp`/`Ti` 就是扫出来的：既要让常规 PID 有明显超调又不能发散，Smith 才衬得出效果；实验六的 `T_d` 默认取 2 s 也是同理——取 6 s 时两条通道动态特性接近，静态前馈和动态前馈会重合，看不出差别。
 
 ## 许可证
 
