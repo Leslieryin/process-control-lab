@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>过程控制 · 交互实验台</title>
+<style>
+:root{
+  --bg:#f5f7fa; --panel:#ffffff; --ink:#1c2733; --muted:#6b7a89;
+  --accent:#0f6cbd; --accent2:#d97706; --good:#15803d; --bad:#b91c1c;
+  --line:#dbe3ec; --chip:#eef4fb;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.55}
+header{background:var(--panel);border-bottom:1px solid var(--line);
+  padding:14px 20px 0;position:sticky;top:0;z-index:5}
+h1{margin:0;font-size:19px;font-weight:600}
+h1 small{color:var(--muted);font-weight:400;font-size:13px;margin-left:10px}
+.tabs{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}
+.tabs button{border:none;background:none;padding:9px 14px;font-size:14px;cursor:pointer;
+  color:var(--muted);border-bottom:2.5px solid transparent;font-family:inherit}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+main{max-width:1060px;margin:0 auto;padding:18px 16px 40px}
+section{display:none}
+section.on{display:block}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:14px 16px;margin-bottom:14px}
+.panel h2{margin:0 0 4px;font-size:16px}
+.panel h3{margin:16px 0 6px;font-size:14px;color:var(--muted);font-weight:600}
+.hint{color:var(--muted);font-size:13px;margin:0 0 10px}
+.ctrls{display:flex;flex-wrap:wrap;gap:14px 22px;margin-bottom:6px}
+.ctrl{min-width:190px;flex:1}
+.ctrl label{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.ctrl label b{color:var(--ink);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=text],select{padding:6px 8px;border:1px solid var(--line);border-radius:6px;
+  font:inherit;width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{background:var(--chip);border-radius:8px;padding:6px 12px;font-size:13px}
+.chip b{font-variant-numeric:tabular-nums}
+.chip.warn{background:#fef3c7;color:#92400e}
+.chip.bad{background:#fee2e2;color:#991b1b}
+.chip.ok{background:#dcfce7;color:#166534}
+canvas{width:100%;display:block;background:#fff;border:1px solid var(--line);border-radius:8px}
+.plotwrap{margin-top:10px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.btns button{border:1px solid var(--line);background:#fff;border-radius:7px;
+  padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.btns button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.note{font-size:12.5px;color:var(--muted);margin-top:8px}
+.note code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:12px}
+table.t{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+table.t th,table.t td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left}
+table.t th{color:var(--muted);font-weight:600;font-size:12.5px}
+table.t td.num{text-align:right;font-variant-numeric:tabular-nums}
+footer{max-width:1060px;margin:0 auto;padding:0 16px 30px;color:var(--muted);font-size:12.5px}
+@media (max-width:640px){ .ctrl{min-width:100%} }
+</style>
+</head>
+<body>
+<header>
+  <h1>过程控制 · 交互实验台<small>浏览器本地数值仿真 · 零依赖单文件</small></h1>
+  <nav class="tabs" id="tabs">
+    <button data-t="fopdt" class="on">对象与纯滞后</button>
+    <button data-t="delay">滞后对闭环的影响</button>
+    <button data-t="tuning">PID 整定</button>
+    <button data-t="smith">Smith 预估补偿</button>
+    <button data-t="cascade">串级控制</button>
+    <button data-t="ff">前馈-反馈复合</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============ 实验 1：对象与纯滞后 ============ -->
+<section id="tab-fopdt" class="on">
+  <div class="panel">
+    <h2>一阶惯性 + 纯滞后（FOPDT）对象的阶跃响应</h2>
+    <p class="hint">工业过程最常用的近似模型 G(s) = K·e<sup>−τs</sup> / (Ts+1)。K 决定最终稳定在哪，T 决定"跟得多快"，τ 决定"多久才开始动"。</p>
+    <div class="ctrls">
+      <div class="ctrl"><label>静态增益 K <b id="v-k"></b></label>
+        <input type="range" id="in-k" min="0.4" max="3" step="0.05" value="1.5"></div>
+      <div class="ctrl"><label>时间常数 T (s) <b id="v-t"></b></label>
+        <input type="range" id="in-t" min="1" max="20" step="0.5" value="8"></div>
+      <div class="ctrl"><label>纯滞后 τ (s) <b id="v-tau"></b></label>
+        <input type="range" id="in-tau" min="0" max="15" step="0.5" value="2"></div>
+    </div>
+    <div class="chips" id="fopdt-chips"></div>
+    <div class="plotwrap"><canvas id="cv-fopdt" height="340"></canvas></div>
+    <p class="note">判读：t=τ 处曲线才开始抬头（纯滞后），之后按指数逼近 K（增益）。到达 63.2% 终值还需 T 秒——这就是时间常数的定义。右下角的 τ/T 是判断"这个对象好不好控"的第一指标。</p>
+  </div>
+</section>
+
+<!-- ============ 实验 2：滞后对闭环的影响 ============ -->
+<section id="tab-delay">
+  <div class="panel">
+    <h2>同一套 PID 参数，只改纯滞后</h2>
+    <p class="hint">固定控制器参数与对象增益、时间常数，只把纯滞后 τ 从 0 逐步加大。滞后本身不改变稳态，却持续吃掉相位裕度——这是过程控制里"调不上去"最常见的原因。</p>
+    <div class="ctrls">
+      <div class="ctrl"><label>对象时间常数 T (s) <b id="v2-t"></b></label>
+        <input type="range" id="in2-t" min="2" max="20" step="0.5" value="8"></div>
+      <div class="ctrl"><label>比例增益 K<sub>p</sub> <b id="v2-kp"></b></label>
+        <input type="range" id="in2-kp" min="0.2" max="4" step="0.05" value="1.6"></div>
+      <div class="ctrl"><label>积分时间 T<sub>i</sub> (s) <b id="v2-ti"></b></label>
+        <input type="range" id="in2-ti" min="1" max="40" step="0.5" value="10"></div>
+      <div class="ctrl"><label>基准滞后 τ₀ (s) <b id="v2-tau"></b></label>
+        <input type="range" id="in2-tau" min="0" max="6" step="0.5" value="1"></div>
+    </div>
+    <div class="chips" id="delay-chips"></div>
+    <div class="plotwrap"><canvas id="cv-delay" height="340"></canvas></div>
+    <p class="note">四条曲线对应 τ₀、2τ₀、3τ₀、4τ₀。留意衰减比：滞后越大，振荡衰减越慢；当 τ 超过某个值后，同样参数会让系统彻底发散——此时唯一出路是<b>降低增益</b>或<b>加补偿</b>（见下一个实验）。</p>
+  </div>
+</section>
+
+<!-- ============ 实验 3：PID 整定 ============ -->
+<section id="tab-tuning">
+  <div class="panel">
+    <h2>PID 参数整定：手调 vs Ziegler-Nichols</h2>
+    <p class="hint">对象为 FOPDT。先看 Z-N 开环反应曲线法给出的参数，再自己拖滑块体会"为什么工程整定只是起点"。</p>
+    <div class="ctrls">
+      <div class="ctrl"><label>增益 K <b id="v3-k"></b></label>
+        <input type="range" id="in3-k" min="0.4" max="3" step="0.05" value="1.5"></div>
+      <div class="ctrl"><label>时间常数 T (s) <b id="v3-t"></b></label>
+        <input type="range" id="in3-t" min="1" max="20" step="0.5" value="8"></div>
+      <div class="ctrl"><label>纯滞后 τ (s) <b id="v3-tau"></b></label>
+        <input type="range" id="in3-tau" min="0.5" max="10" step="0.5" value="2"></div>
+    </div>
+    <div class="btns">
+      <button data-preset="zn" class="on">Z-N 反应曲线法</button>
+      <button data-preset="zn-tight">Z-N 收紧（少超调）</button>
+      <button data-preset="manual">手动</button>
+    </div>
+    <div class="ctrls">
+      <div class="ctrl"><label>K<sub>p</sub> <b id="v3-kp"></b></label>
+        <input type="range" id="in3-kp" min="0" max="8" step="0.05" value="0"></div>
+      <div class="ctrl"><label>T<sub>i</sub> (s) <b id="v3-ti"></b></label>
+        <input type="range" id="in3-ti" min="0.5" max="40" step="0.5" value="10"></div>
+      <div class="ctrl"><label>T<sub>d</sub> (s) <b id="v3-td"></b></label>
+        <input type="range" id="in3-td" min="0" max="10" step="0.1" value="0"></div>
+    </div>
+    <div class="chips" id="tuning-chips"></div>
+    <div class="plotwrap"><canvas id="cv-tuning" height="320"></canvas></div>
+    <table class="t" id="tuning-table"></table>
+    <p class="note">Z-N 公式：<code>Kp = 1.2T/(Kτ)</code>、<code>Ti = 2τ</code>、<code>Td = 0.5τ</code>，设计目标是 4:1 衰减比。教科书常标称「约 25% 超调」，但对一阶滞后对象实测往往到 50% 以上——这正是工程上只把它当起点的原因：参数越激进，对模型误差和扰动的容忍度越低。切到「Z-N 收紧」看超调与调节时间怎么互换。</p>
+  </div>
+</section>
+
+<!-- ============ 实验 4：Smith 预估 ============ -->
+<section id="tab-smith">
+  <div class="panel">
+    <h2>Smith 预估补偿：把滞后移出闭环</h2>
+    <p class="hint">纯滞后 e<sup>−τs</sup> 不在闭环特征方程里，却让控制器"看不见"当前动作的效果。Smith 预估器用模型并行算一份"没有滞后的响应"，把滞后从反馈通道里抵掉。</p>
+    <div class="ctrls">
+      <div class="ctrl"><label>增益 K <b id="v4-k"></b></label>
+        <input type="range" id="in4-k" min="0.5" max="2.5" step="0.05" value="1.2"></div>
+      <div class="ctrl"><label>时间常数 T (s) <b id="v4-t"></b></label>
+        <input type="range" id="in4-t" min="2" max="20" step="0.5" value="8"></div>
+      <div class="ctrl"><label>纯滞后 τ (s) <b id="v4-tau"></b></label>
+        <input type="range" id="in4-tau" min="0.5" max="12" step="0.5" value="5"></div>
+        </div>
+    <div class="ctrls">
+      <div class="ctrl"><label>控制器增益 K<sub>p</sub> <b id="v4-kp"></b></label>
+        <input type="range" id="in4-kp" min="0.2" max="6" step="0.05" value="1.6"></div>
+      <div class="ctrl"><label>积分时间 T<sub>i</sub> (s) <b id="v4-ti"></b></label>
+        <input type="range" id="in4-ti" min="1" max="30" step="0.5" value="10"></div>
+      <div class="ctrl"><label>模型失配误差 <b id="v4-mis"></b></label>
+        <input type="range" id="in4-mis" min="-40" max="40" step="5" value="0"></div>
+    </div>
+    <div class="chips" id="smith-chips"></div>
+    <div class="plotwrap"><canvas id="cv-smith" height="340"></canvas></div>
+    <p class="note">蓝线为常规 PID，橙线为 Smith 预估。模型准确时差距惊人；把"模型失配"拖到 ±30%，橙线会迅速退化——<b>Smith 的收益与模型精度强绑定</b>，这也是它在工业现场不如串级普及的原因。</p>
+  </div>
+</section>
+
+<!-- ============ 实验 5：串级控制 ============ -->
+<section id="tab-cascade">
+  <div class="panel">
+    <h2>串级控制：用快回路守住慢回路</h2>
+    <p class="hint">主对象慢（温度）、副对象快（流量/阀位）。当扰动进入副回路时，副控制器在它传到主变量之前就处理掉了——这是单回路做不到的。</p>
+    <div class="ctrls">
+      <div class="ctrl"><label>主对象时间常数 T₁ (s) <b id="v5-t1"></b></label>
+        <input type="range" id="in5-t1" min="10" max="60" step="1" value="30"></div>
+      <div class="ctrl"><label>副对象时间常数 T₂ (s) <b id="v5-t2"></b></label>
+        <input type="range" id="in5-t2" min="0.5" max="8" step="0.5" value="2"></div>
+      <div class="ctrl"><label>扰动幅值 <b id="v5-d"></b></label>
+        <input type="range" id="in5-d" min="0" max="1" step="0.05" value="0.4"></div>
+    </div>
+    <div class="ctrls">
+      <div class="ctrl"><label>扰动注入位置</label>
+        <select id="in5-pos">
+          <option value="inner">副回路（阀前压力波动）</option>
+          <option value="outer">主回路（环境温度变化）</option>
+        </select></div>
+      <div class="ctrl"><label>主控制器 K<sub>p1</sub> <b id="v5-kp1"></b></label>
+        <input type="range" id="in5-kp1" min="0.2" max="6" step="0.1" value="2.5"></div>
+      <div class="ctrl"><label>副控制器 K<sub>p2</sub> <b id="v5-kp2"></b></label>
+        <input type="range" id="in5-kp2" min="0.5" max="10" step="0.1" value="5"></div>
+    </div>
+    <div class="chips" id="cascade-chips"></div>
+    <div class="plotwrap"><canvas id="cv-cascade" height="340"></canvas></div>
+    <p class="note">灰线为单回路 PID（同样参数直接控制），蓝线为串级。扰动打在副回路时差距最大——单回路必须先等扰动穿过两个对象才在 y₁ 上看见，串级在副变量上就已经开始纠正了。切到"主回路扰动"再看，优势会明显缩小。</p>
+  </div>
+</section>
+
+<!-- ============ 实验 6：前馈-反馈 ============ -->
+<section id="tab-ff">
+  <div class="panel">
+    <h2>前馈-反馈复合控制：扰动可测就提前补偿</h2>
+    <p class="hint">反馈是"错了再改"，前馈是"预判就改"。扰动 d 通过 G<sub>d</sub>(s) 影响输出，若能测到 d，就串一个 G<sub>ff</sub>=−G<sub>d</sub>/G 把它提前抵掉。</p>
+    <div class="ctrls">
+      <div class="ctrl"><label>扰动通道增益 K<sub>d</sub> <b id="v6-kd"></b></label>
+        <input type="range" id="in6-kd" min="0.2" max="2" step="0.05" value="1"></div>
+      <div class="ctrl"><label>扰动通道时间常数 T<sub>d</sub> (s) <b id="v6-td"></b></label>
+        <input type="range" id="in6-td" min="1" max="20" step="0.5" value="2"></div>
+      <div class="ctrl"><label>扰动幅值 <b id="v6-d"></b></label>
+        <input type="range" id="in6-d" min="0.1" max="1.5" step="0.05" value="0.6"></div>
+    </div>
+    <div class="btns">
+      <button data-ff="fb" class="on">仅反馈</button>
+      <button data-ff="static">+ 静态前馈</button>
+      <button data-ff="dynamic">+ 动态前馈（超前滞后）</button>
+    </div>
+    <div class="chips" id="ff-chips"></div>
+    <div class="plotwrap"><canvas id="cv-ff" height="330"></canvas></div>
+    <p class="note">静态前馈只补稳态（<code>u_ff = −K_d/K · d</code>），扰动初期的动态偏差仍靠反馈收拾；动态前馈加上超前滞后环节 <code>(T·s+1)/(T_d·s+1)</code> 后，几乎能在扰动进入的同一时刻抵消掉它。注意前馈<b>不改变闭环稳定性</b>，它只是让反馈一开始就少干活。<br>试着把 T<sub>d</sub> 拖到接近主通道的 T（8 s）附近：静态与动态前馈会几乎重合——两条通道动态特性一致时，静态补偿就够了；差异越大，超前滞后的必要性越明显。</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>全部计算在浏览器本地完成 · 数值积分步长 0.02 s · 与 <a href="https://github.com/Leslieryin/control-lab">control-lab</a>（经典控制）、<a href="https://github.com/Leslieryin/modern-control-lab">modern-control-lab</a>（现代控制）配套使用。</p>
+</footer>
+
+<script>
+"use strict";
+/* =========================================================================
+   1. 基础工具
+   ========================================================================= */
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const DT = 0.02;                 // 统一积分步长
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const fmt = (v, d = 2) => (Math.abs(v) >= 1000 ? v.toFixed(0) : v.toFixed(d));
+
+/* =========================================================================
+   2. 过程环节模型
+   ========================================================================= */
+
+/** 一阶惯性环节 K/(Ts+1)，用精确离散解，大步长也不会数值发散 */
+class FirstOrder {
+  constructor(K, T, dt) { this.K = K; this.T = T; this.dt = dt; this.y = 0; }
+  reset() { this.y = 0; }
+  /** 输入 u，返回本步输出 */
+  step(u) {
+    const a = 1 - Math.exp(-this.dt / Math.max(this.T, 1e-9));
+    this.y += (this.K * u - this.y) * a;
+    return this.y;
+  }
+}
+
+/** 纯滞后环节，长度按 τ/dt 取整，环形缓冲 */
+class Delay {
+  constructor(tau, dt) {
+    this.n = Math.max(1, Math.round(tau / dt));
+    this.buf = new Float64Array(this.n);
+    this.i = 0;
+  }
+  reset() { this.buf.fill(0); this.i = 0; }
+  step(v) {
+    const out = this.buf[this.i];
+    this.buf[this.i] = v;
+    this.i = (this.i + 1) % this.n;
+    return out;
+  }
+}
+
+/** 超前滞后环节 K(Tz·s+1)/(Tp·s+1)，用于动态前馈 */
+class LeadLag {
+  constructor(K, Tz, Tp, dt) {
+    this.K = K; this.Tz = Tz; this.Tp = Math.max(Tp, 1e-9);
+    this.dt = dt; this.y = 0; this.prevX = 0;
+  }
+  reset() { this.y = 0; this.prevX = 0; }
+  step(x) {
+    const dx = x - this.prevX;
+    this.prevX = x;
+    // (Tp)·dy/dt + y = K·(Tz·dx/dt + x)  →  欧拉离散
+    this.y += (this.K * (this.Tz * dx + this.dt * x) - this.dt * this.y) / this.Tp;
+    return this.y;
+  }
+}
+
+/**
+ * 位置式 PID：
+ * - 微分先行（对测量值微分），避免设定值突变造成微分冲击
+ * - 微分一阶滤波，抑制高频噪声放大
+ * - 条件积分抗饱和：输出饱和期间不接受积分累积
+ */
+class PID {
+  constructor(kp, ti, td, dt, opt = {}) {
+    this.kp = kp;
+    this.ti = ti > 0 ? ti : Infinity;   // Infinity 表示无积分
+    this.td = td;
+    this.dt = dt;
+    this.N = opt.N || 10;               // 微分滤波系数
+    this.outMax = opt.outMax !== undefined ? opt.outMax : 1e9;
+    this.outMin = opt.outMin !== undefined ? opt.outMin : -1e9;
+    this.reset();
+  }
+  reset() {
+    this.I = 0; this.prevPV = 0; this.dFilt = 0; this.first = true;
+  }
+  step(sp, pv) {
+    const e = sp - pv;
+    const P = this.kp * e;
+
+    // 微分先行 + 一阶滤波
+    let D = 0;
+    if (this.td > 1e-9) {
+      if (this.first) { this.prevPV = pv; this.first = false; }
+      const dpv = (pv - this.prevPV) / this.dt;
+      this.prevPV = pv;
+      const alpha = this.dt / (this.td / this.N + this.dt);
+      this.dFilt += alpha * (dpv - this.dFilt);
+      D = -this.kp * this.td * this.dFilt;
+    }
+
+    // 积分（条件积分抗饱和）
+    const dI = this.ti === Infinity ? 0 : this.kp * this.dt / this.ti * e;
+    const Inext = this.I + dI;
+    let out = P + Inext + D;
+    if (out > this.outMax) { out = this.outMax; }
+    else if (out < this.outMin) { out = this.outMin; }
+    else { this.I = Inext; }
+    return out;
+  }
+}
+
+/* =========================================================================
+   3. 绘图
+   ========================================================================= */
+
+/**
+ * 通用折线图。
+ * opt: {series:[{data,color,width,dash,label}], xmax, ymin, ymax, refs:[{y,label}],
+ *       xlabel, ylabel}
+ */
+function drawChart(cv, opt) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = cv.getBoundingClientRect();
+  const W = Math.max(320, rect.width);
+  const H = parseInt(cv.getAttribute("height"), 10) || 320;
+  cv.width = Math.round(W * dpr);
+  cv.height = Math.round(H * dpr);
+  cv.style.height = H + "px";
+  const g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  const pad = { l: 54, r: 16, t: 14, b: 30 };
+  const x0 = pad.l, x1 = W - pad.r;
+  const y0 = H - pad.b, y1 = pad.t;
+  const series = opt.series.filter(s => s.data && s.data.length);
+
+  // Y 轴范围
+  let lo = Infinity, hi = -Infinity;
+  for (const s of series) {
+    for (let i = 0; i < s.data.length; i++) {
+      const v = s.data[i];
+      if (!isFinite(v)) continue;
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+  }
+  if (opt.refs) for (const r of opt.refs) { lo = Math.min(lo, r.y); hi = Math.max(hi, r.y); }
+  if (!isFinite(lo) || !isFinite(hi)) { lo = 0; hi = 1; }
+  if (opt.ymin !== undefined) lo = opt.ymin;
+  if (opt.ymax !== undefined) hi = opt.ymax;
+  if (hi - lo < 1e-6) { hi = lo + 1; }
+  const span = hi - lo;
+  lo -= span * 0.06; hi += span * 0.06;
+  if (lo > 0) lo = 0;      // 阶跃响应类曲线保留基线，便于判断是否真的到位
+
+  const xmax = opt.xmax || 1;
+  const X = (t) => x0 + (t / xmax) * (x1 - x0);
+  const Y = (v) => y0 - ((v - lo) / (hi - lo)) * (y0 - y1);
+
+  // 网格与刻度
+  g.font = "11px system-ui,-apple-system,sans-serif";
+  g.textBaseline = "middle";
+  const yTicks = 5;
+  for (let i = 0; i <= yTicks; i++) {
+    const v = lo + (hi - lo) * i / yTicks;
+    const yy = Y(v);
+    g.strokeStyle = i === 0 ? "#c9d4e0" : "#eef2f7";
+    g.beginPath(); g.moveTo(x0, yy); g.lineTo(x1, yy); g.stroke();
+    g.fillStyle = "#8895a3"; g.textAlign = "right";
+    g.fillText(fmt(v, Math.abs(v) < 10 ? 2 : 1), x0 - 7, yy);
+  }
+  const xTicks = 6;
+  for (let i = 0; i <= xTicks; i++) {
+    const t = xmax * i / xTicks;
+    const xx = X(t);
+    g.strokeStyle = "#eef2f7";
+    g.beginPath(); g.moveTo(xx, y0); g.lineTo(xx, y1); g.stroke();
+    g.fillStyle = "#8895a3"; g.textAlign = "center";
+    g.fillText(fmt(t, 0), xx, y0 + 13);
+  }
+  // 轴
+  g.strokeStyle = "#c9d4e0"; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(x0, y1); g.lineTo(x0, y0); g.lineTo(x1, y0); g.stroke();
+
+  // 参考线（设定值等）
+  if (opt.refs) {
+    g.save();
+    g.setLineDash([5, 4]); g.strokeStyle = "#b0bcc9"; g.lineWidth = 1;
+    for (const r of opt.refs) {
+      const yy = Y(r.y);
+      g.beginPath(); g.moveTo(x0, yy); g.lineTo(x1, yy); g.stroke();
+    }
+    g.restore();
+  }
+
+  // 曲线（超出坐标区的部分裁掉）
+  g.save();
+  g.beginPath(); g.rect(x0, y1, x1 - x0, y0 - y1); g.clip();
+  for (const s of series) {
+    g.strokeStyle = s.color || "#0f6cbd";
+    g.lineWidth = s.width || 1.8;
+    g.setLineDash(s.dash || []);
+    g.beginPath();
+    const n = s.data.length;
+    const step = Math.max(1, Math.floor(n / (x1 - x0) / 2));
+    let started = false;
+    for (let i = 0; i < n; i += step) {
+      const v = s.data[i];
+      if (!isFinite(v)) { started = false; continue; }
+      const t = (i / (n - 1)) * xmax;
+      const px = X(t), py = Y(v);
+      if (!started) { g.moveTo(px, py); started = true; }
+      else g.lineTo(px, py);
+    }
+    g.stroke();
+  }
+  g.restore();
+  g.setLineDash([]);
+
+  // 轴标签
+  g.fillStyle = "#8895a3"; g.font = "11.5px system-ui,sans-serif";
+  g.textAlign = "right";
+  g.fillText(opt.xlabel || "t / s", x1, H - 4);
+  g.save();
+  g.translate(13, y1 + 6); g.textAlign = "left"; g.textBaseline = "top";
+  g.fillText(opt.ylabel || "", 0, 0);
+  g.restore();
+
+  // 图例
+  const legend = series.filter(s => s.label);
+  if (legend.length) {
+    g.font = "12px system-ui,sans-serif";
+    g.textBaseline = "middle"; g.textAlign = "left";
+    let lx = x0 + 10, ly = y1 + 12;
+    for (const s of legend) {
+      g.strokeStyle = s.color; g.lineWidth = s.width || 1.8;
+      g.setLineDash(s.dash || []);
+      g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + 18, ly); g.stroke();
+      g.setLineDash([]);
+      g.fillStyle = "#5b6b7b";
+      g.fillText(s.label, lx + 23, ly);
+      const w = g.measureText(s.label).width;
+      lx += 23 + w + 16;
+      if (lx > x1 - 90) { lx = x0 + 10; ly += 17; }
+    }
+  }
+}
+
+/* =========================================================================
+   4. 仿真辅助
+   ========================================================================= */
+
+/** 一阶对象 + 纯滞后串联，用于闭环仿真 */
+class FOPDT {
+  constructor(K, T, tau, dt) {
+    this.fo = new FirstOrder(K, T, dt);
+    this.dl = tau > 0 ? new Delay(tau, dt) : null;
+    this.tau = tau;
+  }
+  reset() { this.fo.reset(); if (this.dl) this.dl.reset(); }
+  step(u) {
+    const y = this.fo.step(u);
+    return this.dl ? this.dl.step(y) : y;
+  }
+}
+
+/** 从响应曲线里算动态指标 */
+function performance(t, y, sp) {
+  let ymax = -Infinity, tmax = 0, ymin = Infinity;
+  for (let i = 0; i < y.length; i++) {
+    if (y[i] > ymax) { ymax = y[i]; tmax = t[i]; }
+    if (i > y.length * 0.5 && y[i] < ymin) ymin = y[i];
+  }
+  const overshoot = sp !== 0 ? (ymax - sp) / sp * 100 : 0;
+  // 2% 调节时间：此后不再离开 ±2% 带
+  let ts = t[t.length - 1];
+  const band = Math.abs(sp) * 0.02;
+  for (let i = y.length - 1; i >= 0; i--) {
+    if (Math.abs(y[i] - sp) > band) { ts = t[Math.min(i + 1, t.length - 1)]; break; }
+    ts = t[i];
+  }
+  // IAE：绝对误差积分
+  let iae = 0;
+  for (let i = 1; i < y.length; i++) iae += Math.abs(sp - y[i]) * (t[i] - t[i - 1]);
+  return { ymax, tmax, overshoot, ts, iae, ymin };
+}
+
+/* 配色 */
+const C = {
+  blue: "#0f6cbd", orange: "#d97706", green: "#15803d",
+  red: "#b91c1c", purple: "#7c3aed", gray: "#9aa7b4", teal: "#0d9488",
+  d1: "#1d4ed8", d2: "#0891b2", d3: "#d97706", d4: "#b91c1c"
+};
+
+/* =========================================================================
+   5. 实验一：对象与纯滞后
+   ========================================================================= */
+function initFOPDT() {
+  const inK = $("#in-k"), inT = $("#in-t"), inTau = $("#in-tau");
+  const cv = $("#cv-fopdt");
+
+  function run() {
+    const K = +inK.value, T = +inT.value, tau = +inTau.value;
+    $("#v-k").textContent = K.toFixed(2);
+    $("#v-t").textContent = T.toFixed(1);
+    $("#v-tau").textContent = tau.toFixed(1);
+
+    const T_end = Math.max(30, (T + tau) * 4);
+    const n = Math.round(T_end / DT);
+    const y = new Float64Array(n);
+    const obj = new FOPDT(K, T, tau, DT);
+    for (let i = 0; i < n; i++) y[i] = obj.step(1);
+    const t = Float64Array.from({length: n}, (_, i) => i * DT);
+
+    // 63.2% 时间点
+    const t63 = tau + T;
+    const idx63 = Math.min(n - 1, Math.round(t63 / DT));
+
+    // 可控性判断
+    const ratio = tau / T;
+    let verdict, cls;
+    if (ratio < 0.2) { verdict = "易控", cls = "ok"; }
+    else if (ratio < 1.0) { verdict = "需要补偿", cls = "warn"; }
+    else { verdict = "难控", cls = "bad"; }
+    $("#fopdt-chips").innerHTML = [
+      `<span class="chip">稳态值 <b>${K.toFixed(2)}</b></span>`,
+      `<span class="chip">τ/T = <b>${ratio.toFixed(2)}</b></span>`,
+      `<span class="chip ${cls}">可控性：<b>${verdict}</b></span>`,
+      `<span class="chip">到 63.2% 用时 <b>${t63.toFixed(1)} s</b></span>`,
+    ].join("");
+
+    drawChart(cv, {
+      xmax: T_end,
+      series: [
+        { data: Array.from(y), color: C.blue, width: 2, label: "阶跃响应 y(t)" },
+      ],
+      refs: [{ y: K }],
+      xlabel: "t / s", ylabel: "y"
+    });
+  }
+  [inK, inT, inTau].forEach(el => el.addEventListener("input", run));
+  run();
+  return run;
+}
+
+/* =========================================================================
+   6. 实验二：滞后对闭环的影响
+   ========================================================================= */
+function initDelay() {
+  const els = [$("#in2-t"), $("#in2-kp"), $("#in2-ti"), $("#in2-tau")];
+  const cv = $("#cv-delay");
+
+  function run() {
+    const T = +$("#in2-t").value;
+    const kp = +$("#in2-kp").value;
+    const ti = +$("#in2-ti").value;
+    const tau0 = +$("#in2-tau").value;
+    $("#v2-t").textContent = T.toFixed(1);
+    $("#v2-kp").textContent = kp.toFixed(2);
+    $("#v2-ti").textContent = ti.toFixed(1);
+    $("#v2-tau").textContent = tau0.toFixed(1);
+
+    const T_end = Math.max(60, T * 6);
+    const n = Math.round(T_end / DT);
+    const mult = [1, 2, 3, 4];
+    const colors = [C.d1, C.d2, C.d3, C.d4];
+    const series = [];
+    const rows = [];
+
+    mult.forEach((m, idx) => {
+      const tau = tau0 * m;
+      const obj = new FOPDT(1, T, tau, DT);
+      const pid = new PID(kp, ti, 0, DT, { outMax: 3, outMin: -1 });
+      const y = new Float64Array(n);
+      let yPrev = 0;
+      for (let i = 0; i < n; i++) {
+        const u = pid.step(1, yPrev);
+        yPrev = obj.step(u);
+        y[i] = yPrev;
+      }
+      const perf = performance(
+        Float64Array.from({length: n}, (_, i) => i * DT), y, 1);
+      series.push({
+        data: Array.from(y), color: colors[idx], width: tau === 0 ? 1.4 : 1.8,
+        dash: tau === 0 ? [5, 3] : [],
+        label: `τ = ${tau.toFixed(1)} s`
+      });
+      rows.push(`<tr><td>τ = ${tau.toFixed(1)} s（${m}×）</td>
+        <td class="num">${perf.overshoot.toFixed(1)}%</td>
+        <td class="num">${perf.ts.toFixed(1)} s</td>
+        <td class="num">${perf.iae.toFixed(1)}</td></tr>`);
+    });
+
+    $("#delay-chips").innerHTML =
+      `<span class="chip">对象 <b>e<sup>−τs</sup>/(${T}s+1)</b></span>` +
+      `<span class="chip">K<sub>p</sub>=<b>${kp.toFixed(2)}</b> T<sub>i</sub>=<b>${ti.toFixed(1)}</b> s</span>`;
+
+    drawChart(cv, {
+      xmax: T_end, series,
+      refs: [{ y: 1 }],
+      xlabel: "t / s", ylabel: "y"
+    });
+
+    // 表格
+    let tbl = document.getElementById("delay-table");
+    if (!tbl) {
+      tbl = document.createElement("table");
+      tbl.className = "t"; tbl.id = "delay-table";
+      cv.parentElement.after(tbl);
+    }
+    tbl.innerHTML = `<tr><th>滞后</th><th>超调</th><th>调节时间(2%)</th><th>IAE</th></tr>` + rows.join("");
+  }
+  els.forEach(el => el.addEventListener("input", run));
+  run();
+  return run;
+}
+
+/* =========================================================================
+   7. 实验三：PID 整定
+   ========================================================================= */
+function initTuning() {
+  const cv = $("#cv-tuning");
+  let preset = "zn";
+
+  function znParams(K, T, tau) {
+    // Ziegler-Nichols 开环反应曲线法（一阶滞后近似）
+    return { kp: 1.2 * T / (K * tau), ti: 2 * tau, td: 0.5 * tau };
+  }
+  function znTight(K, T, tau) {
+    const p = znParams(K, T, tau);
+    return { kp: p.kp * 0.7, ti: p.ti * 1.2, td: p.td * 0.8 };
+  }
+
+  function applyPreset() {
+    const K = +$("#in3-k").value, T = +$("#in3-t").value, tau = +$("#in3-tau").value;
+    let p;
+    if (preset === "zn") p = znParams(K, T, tau);
+    else if (preset === "zn-tight") p = znTight(K, T, tau);
+    else return;
+    const kpEl = $("#in3-kp");
+    kpEl.max = Math.max(8, p.kp * 1.6).toFixed(1);
+    kpEl.value = clamp(p.kp, 0, +kpEl.max);
+    $("#in3-ti").value = clamp(p.ti, 0.5, 40);
+    $("#in3-td").value = clamp(p.td, 0, 10);
+  }
+
+  function run() {
+    const K = +$("#in3-k").value, T = +$("#in3-t").value, tau = +$("#in3-tau").value;
+    const kp = +$("#in3-kp").value, ti = +$("#in3-ti").value, td = +$("#in3-td").value;
+    $("#v3-k").textContent = K.toFixed(2);
+    $("#v3-t").textContent = T.toFixed(1);
+    $("#v3-tau").textContent = tau.toFixed(1);
+    $("#v3-kp").textContent = kp.toFixed(2);
+    $("#v3-ti").textContent = ti.toFixed(1);
+    $("#v3-td").textContent = td.toFixed(1);
+
+    const T_end = Math.max(80, (T + tau) * 6);
+    const n = Math.round(T_end / DT);
+    const obj = new FOPDT(K, T, tau, DT);
+    const pid = new PID(kp, ti, td, DT, { outMax: 10, outMin: -2 });
+    const y = new Float64Array(n), uu = new Float64Array(n);
+    let yPrev = 0;
+    for (let i = 0; i < n; i++) {
+      const u = pid.step(1, yPrev);
+      yPrev = obj.step(u);
+      y[i] = yPrev; uu[i] = u;
+    }
+    const t = Float64Array.from({length: n}, (_, i) => i * DT);
+    const perf = performance(t, y, 1);
+    const zn = znParams(K, T, tau);
+
+    let cls = perf.overshoot < 5 ? "ok" : perf.overshoot < 30 ? "warn" : "bad";
+    $("#tuning-chips").innerHTML = [
+      `<span class="chip">超调 <b>${perf.overshoot.toFixed(1)}%</b></span>`,
+      `<span class="chip ${cls}">调节时间(2%) <b>${perf.ts.toFixed(1)} s</b></span>`,
+      `<span class="chip">IAE <b>${perf.iae.toFixed(1)}</b></span>`,
+      `<span class="chip">Z-N 参考：K<sub>p</sub>=${zn.kp.toFixed(2)} T<sub>i</sub>=${zn.ti.toFixed(1)} T<sub>d</sub>=${zn.td.toFixed(1)}</span>`,
+    ].join("");
+
+    drawChart(cv, {
+      xmax: T_end,
+      series: [
+        { data: Array.from(y), color: C.blue, width: 2, label: "y(t)" },
+        { data: Array.from(uu), color: C.orange, width: 1.3, dash: [4, 3], label: "u(t)" },
+      ],
+      refs: [{ y: 1 }],
+      xlabel: "t / s", ylabel: "y / u"
+    });
+
+    $("#tuning-table").innerHTML = `
+      <tr><th>方案</th><th>K<sub>p</sub></th><th>T<sub>i</sub></th><th>T<sub>d</sub></th></tr>
+      <tr><td>Z-N 标准</td><td class="num">${zn.kp.toFixed(2)}</td><td class="num">${zn.ti.toFixed(1)}</td><td class="num">${zn.td.toFixed(1)}</td></tr>
+      <tr><td>Z-N 收紧</td><td class="num">${znTight(K,T,tau).kp.toFixed(2)}</td><td class="num">${znTight(K,T,tau).ti.toFixed(1)}</td><td class="num">${znTight(K,T,tau).td.toFixed(1)}</td></tr>
+      <tr><td><b>当前</b></td><td class="num"><b>${kp.toFixed(2)}</b></td><td class="num"><b>${ti.toFixed(1)}</b></td><td class="num"><b>${td.toFixed(1)}</b></td></tr>`;
+  }
+
+  $$("#tab-tuning .btns button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      $$("#tab-tuning .btns button").forEach(b => b.classList.remove("on"));
+      btn.classList.add("on");
+      preset = btn.dataset.preset;
+      if (preset !== "manual") { applyPreset(); }
+      run();
+    });
+  });
+  ["#in3-k", "#in3-t", "#in3-tau"].forEach(s => $(s).addEventListener("input", () => {
+    if (preset !== "manual") applyPreset();
+    run();
+  }));
+  ["#in3-kp", "#in3-ti", "#in3-td"].forEach(s => $(s).addEventListener("input", () => {
+    if (preset !== "manual") {
+      preset = "manual";
+      $$("#tab-tuning .btns button").forEach(b => b.classList.toggle("on", b.dataset.preset === "manual"));
+    }
+    run();
+  }));
+  applyPreset();
+  run();
+  return run;
+}
+
+/* =========================================================================
+   8. 实验四：Smith 预估
+   ========================================================================= */
+function initSmith() {
+  const cv = $("#cv-smith");
+
+  function sim(withSmith, K, T, tau, kp, ti, misScale) {
+    const T_end = Math.max(70, (T + tau) * 5);
+    const n = Math.round(T_end / DT);
+    const plant = new FOPDT(K, T, tau, DT);
+
+    // Smith 用的模型：参数按失配比例缩放
+    const Km = K * (1 + misScale), Tm = T * (1 + misScale), taum = tau * (1 + misScale);
+    const modelFo = new FirstOrder(Km, Tm, DT);
+    const modelDl = taum > 0 ? new Delay(taum, DT) : null;
+
+    const pid = new PID(kp, ti, 0, DT, { outMax: 20, outMin: -5 });
+    const y = new Float64Array(n);
+    let yPrev = 0, u = 0;
+
+    for (let i = 0; i < n; i++) {
+      let fb = yPrev;
+      if (withSmith) {
+        // 无滞后模型输出与其自身的滞后值之差，用来把滞后从反馈里抵掉
+        const ym0 = modelFo.step(u);
+        const ym0d = modelDl ? modelDl.step(ym0) : ym0;
+        fb = yPrev + (ym0 - ym0d);
+      }
+      u = pid.step(1, fb);
+      yPrev = plant.step(u);
+      y[i] = yPrev;
+    }
+    return y;
+  }
+
+  function run() {
+    const K = +$("#in4-k").value, T = +$("#in4-t").value, tau = +$("#in4-tau").value;
+    const kp = +$("#in4-kp").value, ti = +$("#in4-ti").value;
+    const misPct = +$("#in4-mis").value;
+    $("#v4-k").textContent = K.toFixed(2);
+    $("#v4-t").textContent = T.toFixed(1);
+    $("#v4-tau").textContent = tau.toFixed(1);
+    $("#v4-kp").textContent = kp.toFixed(2);
+    $("#v4-ti").textContent = ti.toFixed(1);
+    $("#v4-mis").textContent = (misPct > 0 ? "+" : "") + misPct + "%";
+
+    const T_end = Math.max(70, (T + tau) * 5);
+    const n = Math.round(T_end / DT);
+    const mis = misPct / 100;
+
+    const yFb = sim(false, K, T, tau, kp, ti, 0);
+    const ySm = sim(true, K, T, tau, kp, ti, mis);
+
+    const t = Float64Array.from({length: n}, (_, i) => i * DT);
+    const pf = performance(t, yFb, 1);
+    const ps = performance(t, ySm, 1);
+
+    const gain = pf.iae > 0 ? ps.iae / pf.iae : 1;
+    $("#smith-chips").innerHTML = [
+      `<span class="chip">常规 PID：超调 <b>${pf.overshoot.toFixed(0)}%</b> · IAE <b>${pf.iae.toFixed(0)}</b></span>`,
+      `<span class="chip ${ps.iae < pf.iae ? "ok" : "bad"}">Smith：超调 <b>${ps.overshoot.toFixed(0)}%</b> · IAE <b>${ps.iae.toFixed(0)}</b></span>`,
+      `<span class="chip ${gain < 0.6 ? "ok" : gain > 1.05 ? "bad" : "warn"}">IAE 比值 <b>${gain.toFixed(2)}</b></span>`,
+    ].join("");
+
+    drawChart(cv, {
+      xmax: T_end,
+      series: [
+        { data: Array.from(yFb), color: C.blue, width: 1.8, label: "常规 PID" },
+        { data: Array.from(ySm), color: C.orange, width: 2, label: "Smith 预估" },
+      ],
+      refs: [{ y: 1 }],
+      xlabel: "t / s", ylabel: "y"
+    });
+  }
+  ["#in4-k", "#in4-t", "#in4-tau", "#in4-kp", "#in4-ti", "#in4-mis"]
+    .forEach(s => $(s).addEventListener("input", run));
+  run();
+  return run;
+}
+
+/* =========================================================================
+   9. 实验五：串级控制
+   ========================================================================= */
+function initCascade() {
+  const cv = $("#cv-cascade");
+
+  function run() {
+    const T1 = +$("#in5-t1").value;
+    const T2 = +$("#in5-t2").value;
+    const dAmp = +$("#in5-d").value;
+    const pos = $("#in5-pos").value;
+    const kp1 = +$("#in5-kp1").value;
+    const kp2 = +$("#in5-kp2").value;
+    $("#v5-t1").textContent = T1.toFixed(0);
+    $("#v5-t2").textContent = T2.toFixed(1);
+    $("#v5-d").textContent = dAmp.toFixed(2);
+    $("#v5-kp1").textContent = kp1.toFixed(1);
+    $("#v5-kp2").textContent = kp2.toFixed(1);
+
+    const T_end = Math.max(120, T1 * 4.5);
+    const n = Math.round(T_end / DT);
+    const tD = T_end * 0.35;                 // 扰动加入时刻
+    const iD = Math.round(tD / DT);
+
+    // ---- 单回路 ----
+    const g1s = new FirstOrder(1, T1, DT);
+    const g2s = new FirstOrder(1, T2, DT);
+    const pids = new PID(kp1, T1 * 0.5, 0, DT, { outMax: 5, outMin: -1 });
+    const ys = new Float64Array(n);
+    // ---- 串级 ----
+    const g1c = new FirstOrder(1, T1, DT);
+    const g2c = new FirstOrder(1, T2, DT);
+    const pid1 = new PID(kp1, T1 * 0.5, 0, DT, { outMax: 5, outMin: -1 });
+    const pid2 = new PID(kp2, T2 * 0.8, 0, DT, { outMax: 6, outMin: -2 });
+    const yc = new Float64Array(n);
+
+    let y1s = 0, y1c = 0, y2c = 0;
+    for (let i = 0; i < n; i++) {
+      const d = i >= iD ? dAmp : 0;
+
+      // 单回路：控制器直接对主变量
+      const us = pids.step(1, y1s);
+      const v2s = g2s.step(us + (pos === "inner" ? d : 0));
+      y1s = g1s.step(v2s + (pos === "outer" ? d : 0));
+      ys[i] = y1s;
+
+      // 串级：主控制器输出副回路设定值
+      const sp2 = pid1.step(1, y1c);
+      const u2 = pid2.step(sp2, y2c);
+      y2c = g2c.step(u2 + (pos === "inner" ? d : 0));
+      y1c = g1c.step(y2c + (pos === "outer" ? d : 0));
+      yc[i] = y1c;
+    }
+
+    const t = Float64Array.from({length: n}, (_, i) => i * DT);
+    const pf = performance(t, ys, 1);
+    const pc = performance(t, yc, 1);
+    // 扰动后的最大偏差
+    let devS = 0, devC = 0;
+    for (let i = iD; i < n; i++) {
+      devS = Math.max(devS, Math.abs(ys[i] - 1));
+      devC = Math.max(devC, Math.abs(yc[i] - 1));
+    }
+    const better = devC < devS ? ((1 - devC / devS) * 100) : 0;
+
+    $("#cascade-chips").innerHTML = [
+      `<span class="chip">单回路最大偏差 <b>${devS.toFixed(3)}</b></span>`,
+      `<span class="chip">串级最大偏差 <b>${devC.toFixed(3)}</b></span>`,
+      `<span class="chip ${better > 30 ? "ok" : better > 5 ? "warn" : "bad"}">串级抑制 <b>${better.toFixed(0)}%</b></span>`,
+      `<span class="chip">扰动：<b>${pos === "inner" ? "副回路" : "主回路"}</b></span>`,
+    ].join("");
+
+    drawChart(cv, {
+      xmax: T_end,
+      series: [
+        { data: Array.from(ys), color: C.gray, width: 1.5, dash: [5, 3], label: "单回路 PID" },
+        { data: Array.from(yc), color: C.blue, width: 2, label: "串级控制" },
+      ],
+      refs: [{ y: 1 }],
+      xlabel: "t / s", ylabel: "主变量 y₁"
+    });
+  }
+  ["#in5-t1", "#in5-t2", "#in5-d", "#in5-kp1", "#in5-kp2", "#in5-pos"]
+    .forEach(s => $(s).addEventListener("input", run));
+  run();
+  return run;
+}
+
+/* =========================================================================
+   10. 实验六：前馈-反馈
+   ========================================================================= */
+function initFF() {
+  const cv = $("#cv-ff");
+  let mode = "fb";
+
+  function run() {
+    const Kd = +$("#in6-kd").value;
+    const Td = +$("#in6-td").value;
+    const dAmp = +$("#in6-d").value;
+    $("#v6-kd").textContent = Kd.toFixed(2);
+    $("#v6-td").textContent = Td.toFixed(1);
+    $("#v6-d").textContent = dAmp.toFixed(2);
+
+    const K = 1.5, T = 8;                   // 主通道
+    const T_end = Math.max(70, (T + Td) * 4);
+    const n = Math.round(T_end / DT);
+    const tD = T_end * 0.25;
+    const iD = Math.round(tD / DT);
+
+    const out = {};
+
+    for (const [tag, useFF] of [["fb", "none"], ["static", "static"], ["dynamic", "dynamic"]]) {
+      // 每次从头跑一遍，避免状态污染
+      const g = new FirstOrder(K, T, DT);
+      const gd = new FirstOrder(Kd, Td, DT);
+      const pid = new PID(1.6, 10, 0, DT, { outMax: 8, outMin: -3 });
+      // 动态前馈：Kff = Kd/K, 超前 Tz=T, 滞后 Tp=Td
+      const ff = new LeadLag(Kd / K, T, Td, DT);
+      const y = new Float64Array(n);
+      let yPrev = 0;
+      for (let i = 0; i < n; i++) {
+        const d = i >= iD ? dAmp : 0;
+        const dOut = gd.step(d);         // 扰动经通道影响输出
+        // 前馈补偿器作用在「原始扰动 d」上：Gff = Gd/G
+        let uff = 0;
+        if (useFF === "static") uff = -(Kd / K) * d;
+        else if (useFF === "dynamic") uff = -ff.step(d);
+        const u = pid.step(1, yPrev) + uff;
+        yPrev = g.step(u) + dOut;        // 扰动叠加到输出
+        y[i] = yPrev;
+      }
+      out[tag] = y;
+    }
+
+    const t = Float64Array.from({length: n}, (_, i) => i * DT);
+    const devs = {};
+    for (const k of ["fb", "static", "dynamic"]) {
+      let m = 0;
+      for (let i = iD; i < n; i++) m = Math.max(m, Math.abs(out[k][i] - 1));
+      devs[k] = m;
+    }
+
+    $("#ff-chips").innerHTML = [
+      `<span class="chip">仅反馈偏差 <b>${devs.fb.toFixed(3)}</b></span>`,
+      `<span class="chip">静态前馈 <b>${devs.static.toFixed(3)}</b></span>`,
+      `<span class="chip ${devs.dynamic < devs.fb * 0.3 ? "ok" : "warn"}">动态前馈 <b>${devs.dynamic.toFixed(3)}</b></span>`,
+    ].join("");
+
+    // 选中的方案加粗，其余保持可见但变细，便于同图对比
+    const w = (tag) => (mode === tag ? 2.6 : 1.2);
+    const series = [
+      { data: Array.from(out.fb), color: C.gray, width: w("fb"), dash: [5, 3], label: "仅反馈" },
+      { data: Array.from(out.static), color: C.orange, width: w("static"), label: "静态前馈" },
+      { data: Array.from(out.dynamic), color: C.blue, width: w("dynamic"), label: "动态前馈" },
+    ];
+
+    drawChart(cv, {
+      xmax: T_end, series,
+      refs: [{ y: 1 }],
+      xlabel: "t / s", ylabel: "y"
+    });
+  }
+
+  $$("#tab-ff .btns button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      $$("#tab-ff .btns button").forEach(b => b.classList.remove("on"));
+      btn.classList.add("on");
+      mode = btn.dataset.ff;
+      run();
+    });
+  });
+  ["#in6-kd", "#in6-td", "#in6-d"].forEach(s => $(s).addEventListener("input", run));
+  run();
+  return run;
+}
+
+/* =========================================================================
+   11. 路由与初始化
+   ========================================================================= */
+const runners = {};
+const initMap = {
+  fopdt: initFOPDT,
+  delay: initDelay,
+  tuning: initTuning,
+  smith: initSmith,
+  cascade: initCascade,
+  ff: initFF
+};
+
+function activate(key) {
+  $$("main section").forEach(s => s.classList.remove("on"));
+  const sec = $("#tab-" + key);
+  if (sec) sec.classList.add("on");
+  $$("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === key));
+
+  if (!runners[key]) {
+    runners[key] = initMap[key]();
+  } else {
+    // 切回来时重绘，保证画布宽度跟随布局变化
+    runners[key]();
+  }
+  location.hash = key;
+}
+
+$$("#tabs button").forEach(btn => {
+  btn.addEventListener("click", () => activate(btn.dataset.t));
+});
+
+window.addEventListener("resize", () => {
+  const key = (location.hash || "#fopdt").slice(1);
+  if (runners[key]) runners[key]();
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const key = (location.hash || "#fopdt").slice(1);
+  activate(initMap[key] ? key : "fopdt");
+});
+
+// DOMContentLoaded 可能已经触发
+if (document.readyState !== "loading") {
+  const key = (location.hash || "#fopdt").slice(1);
+  activate(initMap[key] ? key : "fopdt");
+}
+</script>
+</body>
+</html>
