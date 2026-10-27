@@ -8,6 +8,10 @@
 
 这是继 [control-lab](https://github.com/Leslieryin/control-lab)（经典控制）、[modern-control-lab](https://github.com/Leslieryin/modern-control-lab)（现代控制）之后的第三级：**前两个讲"理论上怎么算"，这一个讲"现场为什么调不出来"**。
 
+> **EN** — Process control lab: pure dead time, Smith predictor, cascade and feedforward control — six experiments on why dead time destabilizes a loop, and when each compensator actually helps. [Try it →](https://leslieryin.github.io/process-control-lab/)
+
+![依次切换六个实验：滞后对闭环的影响、PID 整定、Smith 预估、串级、前馈-反馈](docs/demo.gif)
+
 ## 为什么过程控制要单独一套
 
 自控原理里的对象大多没有纯滞后，状态空间更是不谈滞后。但工业现场的对象几乎都是这个形状：
