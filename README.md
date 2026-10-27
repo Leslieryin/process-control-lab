@@ -10,7 +10,7 @@
 
 > **EN** — Process control lab: pure dead time, Smith predictor, cascade and feedforward control — six experiments on why dead time destabilizes a loop, and when each compensator actually helps. [Try it →](https://leslieryin.github.io/process-control-lab/)
 
-![依次切换六个实验：滞后对闭环的影响、PID 整定、Smith 预估、串级、前馈-反馈](docs/demo.gif)
+![拖动纯滞后时间 τ（2.0 → 9.0），曲线起始点后移，τ/T 判据从 0.25 变为 1.13 并提示需要补偿](docs/demo.gif)
 
 ## 为什么过程控制要单独一套
 
